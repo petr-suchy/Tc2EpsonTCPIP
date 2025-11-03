@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<pou>
+	<path/>
+	<name>MAIN</name>
+	<flags>2048</flags>
+	<interface>
+		<![CDATA[PROGRAM MAIN
+VAR
+	fbEpsonTCPIPConnection : FB_EpsonTCPIPConnection;
+
+	(* Remote address of the robot controller. String containing an (Ipv4) Internet Protocol dotted address. *)
+	sRemoteHost : STRING(15) := '192.168.100.2';
+	(* Remote TCP port of the robot controller. *)
+	nRemotePort : UDINT := 2000;
+	(* Output data from PLC that is sent to the robot controller *)
+	stDataOut : sEpsonTCPIPSendData;
+	(* Input data for PLC that is received from the robot controller. *)
+	stDataIn : sEpsonTCPIPRecvData;
+
+	bConnect : BOOL;
+	bConnected : BOOL;
+	bAlive : BOOL;
+	nCycleTime : UINT;
+END_VAR
+]]>
+	</interface>
+	<st>
+		<body>
+			<![CDATA[fbEpsonTCPIPConnection(
+	bEnable:= bConnect,
+	stDataOut:= stDataOut,
+	sRemoteHost:= sRemoteHost,
+	nRemotePort:= nRemotePort,
+	bConnected=> bConnected,
+	bAlive=> bAlive,
+	nCycleTime=> nCycleTime,
+	stDataIn=> stDataIn);]]>
+		</body>
+	</st>
+</pou>
