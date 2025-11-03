@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<gvl>
+	<path/>
+	<name>Global_Variables</name>
+	<flags>2048</flags>
+	<interface>
+		<![CDATA[VAR_GLOBAL
+END_VAR
+]]>
+	</interface>
+	<file-name><![CDATA[]]></file-name>
+	<file-time>0</file-time>
+	<exp-imp>false</exp-imp>
+</gvl>
