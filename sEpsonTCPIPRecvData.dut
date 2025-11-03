@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<dut>
+	<path>\/zLibrary\/EpsonTCPIP</path>
+	<name>sEpsonTCPIPRecvData</name>
+	<flags>2048</flags>
+	<interface>
+		<![CDATA[TYPE sEpsonTCPIPRecvData :
+STRUCT
+	CmdNo			: UINT;
+	PosNo			: DINT;
+	CmdState		: DINT;
+	PosX			: REAL;
+	PosY			: REAL;
+	PosZ			: REAL;
+	ApplPara		: ARRAY[0..7] OF	REAL;
+	ErrorCode		: DINT;
+	ErrorMessage	: STRING(255);
+END_STRUCT
+END_TYPE
+]]>
+	</interface>
+</dut>
