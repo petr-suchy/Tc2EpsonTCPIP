@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<pou>
+	<path>\/zLibrary\/EpsonTCPIP</path>
+	<name>FB_EpsonTCPIPConnection</name>
+	<flags>2048</flags>
+	<interface>
+		<![CDATA[FUNCTION_BLOCK FB_EpsonTCPIPConnection
+VAR_INPUT
+	(* Enable connection to the robot controller. *)
+	bEnable : BOOL;
+	(* Remote address of the robot controller. String containing an (Ipv4) Internet Protocol dotted address. *)
+	sRemoteHost : STRING(15);
+	(* Remote TCP port of the robot controller. *)
+	nRemotePort : UDINT;
+	(* Output data from PLC that is sent to the robot controller *)
+	stDataOut : sEpsonTCPIPSendData;
+END_VAR
+VAR_OUTPUT
+	(* If TRUE, a connection is established with the robot controller. *)
+	bConnected : BOOL;
+	(* If TRUE, data exchange between the PLC and the robot controller is performed. *)
+	bAlive : BOOL;
+	(* The length of the data exchange cycle in milliseconds between the PLC and the robot. *)
+	nCycleTime : UINT;
+	(* Input data for PLC that is received from the robot controller. *)
+	stDataIn: sEpsonTCPIPRecvData;
+END_VAR
+VAR
+	nNextTelNo : UINT := 1;
+	nSendTelNo : UINT;
+	nRecvTelNo : UINT;
+
+	bSendTelegram : BOOL;
+
+	sSendBuffer : STRING(255);
+	sReadBuffer : STRING(255);
+	sRecvBuffer : STRING(255);
+	sRecvTelegram : STRING(255);
+	sRecvArg : STRING(255);
+
+	hSocket : T_HSOCKET;
+
+	fbSocketConnect : FB_SocketConnect;
+	fbSocketClose : FB_SocketClose;
+	fbSocketSend : FB_SocketSend;
+	fbSocketReceive : FB_SocketReceive;
+
+	nCrLfPos : INT;
+	nDelimPos : INT;
+	nRecvArgNo : INT;
+
+	fbCycleTimeMeasurementTon : TON;
+	nNumOfTelPerSecond : UINT;
+	bReconnect : BOOL;
+	bDisconnect : BOOL;
+	fbAliveTof : TOF;
+	fbInitialResponseTimeoutTon : TON;
+	bExecuteConnect : BOOL;
+	bExecuteClose : BOOL;
+	bExecuteRead : BOOL;
+	bExecuteSend : BOOL;
+END_VAR
+VAR CONSTANT
+	END_OF_TEL : STRING(2) := '$R$N';
+	ARG_DELIM : STRING(1) := ',';
+	RECV_ARG_TEL_NO : INT := 2;
+	RECV_ARG_CMD_NO : INT := 3;
+	RECV_ARG_POS_NO : INT := 4;
+	RECV_ARG_CMD_STATE : INT := 5;
+	RECV_ARG_POS_X : INT := 6;
+	RECV_ARG_POS_Y : INT := 7;
+	RECV_ARG_POS_Z : INT := 8;
+	RECV_ARG_APP_PARA_0 : INT := 9;
+	RECV_ARG_APP_PARA_1 : INT := 10;
+	RECV_ARG_APP_PARA_2 : INT := 11;
+	RECV_ARG_APP_PARA_3 : INT := 12;
+	RECV_ARG_APP_PARA_4 : INT := 13;
+	RECV_ARG_APP_PARA_5 : INT := 14;
+	RECV_ARG_APP_PARA_6 : INT := 15;
+	RECV_ARG_APP_PARA_7 : INT := 16;
+	RECV_ARG_ERROR_CODE : INT := 17;
+	RECV_ARG_ERROR_MESSAGE : INT := 18;
+	NUM_OF_RECV_ARGS : INT := 18;
+END_VAR]]>
+	</interface>
+	<st>
+		<body>
+			<![CDATA[(* Keep the connection marked as active if a response to a sent telegram is received within the PT limit. *)
+fbAliveTof(IN:= nRecvTelNo > 0 AND nSendTelNo = nRecvTelNo, PT := T#5S);
+bAlive := bConnected AND fbAliveTof.Q;
+
+(* Output of the timer becomes TRUE when no telegram is received within PT limit after connection is establised. *)
+fbInitialResponseTimeoutTon(IN:= bConnected AND nRecvTelNo = 0, PT:= T#5S);
+
+(* Terminate connection if no initial response is received or the connection is no longer active. *)
+bDisconnect := bDisconnect OR fbInitialResponseTimeoutTon.Q OR (NOT bAlive AND nRecvTelNo > 0);
+
+(* If the connection is enabled, connect to the robot controller. *)
+bExecuteConnect :=  bEnable AND NOT bReconnect AND NOT bConnected;
+
+fbSocketConnect(
+	sSrvNetId:= '',
+	sRemoteHost:= sRemoteHost,
+	nRemotePort:= nRemotePort,
+	bExecute:= bExecuteConnect AND NOT fbSocketConnect.bBusy,
+	tTimeout:= T#5S,
+	bBusy=> ,
+	bError=> ,
+	nErrId=> ,
+	hSocket=> hSocket);
+
+bReconnect := FALSE;
+
+IF bExecuteConnect AND NOT fbSocketConnect.bBusy AND NOT fbSocketConnect.bError THEN
+	bConnected := TRUE;
+ELSIF bExecuteConnect AND NOT fbSocketConnect.bBusy AND fbSocketConnect.bError THEN
+	bReconnect := TRUE;
+END_IF
+
+bExecuteClose := (NOT bEnable OR bDisconnect) AND bConnected;
+
+fbSocketClose(
+	sSrvNetId:= '',
+	hSocket:= hSocket,
+	bExecute:= bExecuteClose AND NOT fbSocketClose.bBusy,
+	tTimeout:= T#1S,
+	bBusy=> ,
+	bError=> ,
+	nErrId=> );
+
+IF bExecuteClose AND NOT fbSocketClose.bBusy THEN
+	bConnected := FALSE;
+	bDisconnect := FALSE;
+	nNumOfTelPerSecond := 0;
+	nCycleTime := 0;
+	nNextTelNo := 1;
+	nSendTelNo := 0;
+	nRecvTelNo := 0;
+	bSendTelegram := FALSE;
+	sSendBuffer := '';
+	MEMSET(ADR(sReadBuffer), 0, SIZEOF(sReadBuffer));
+	sRecvBuffer := '';
+	sRecvTelegram := '';
+END_IF
+
+IF bEnable AND bConnected AND nSendTelNo = nRecvTelNo THEN
+	nSendTelNo := nNextTelNo;
+	nNextTelNo := (nNextTelNo MOD 65535) + 1;
+
+	sSendBuffer := CONCAT('CMD', ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, UINT_TO_STRING(nSendTelNo));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, UINT_TO_STRING(stDataOut.CmdNo));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, DINT_TO_STRING(stDataOut.PosNo));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer,DINT_TO_STRING(stDataOut.Override));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, DINT_TO_STRING(stDataOut.Vel));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, DINT_TO_STRING(stDataOut.Acc));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, REAL_TO_STRING(stDataOut.OffsetX * 1000.0));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, REAL_TO_STRING(stDataOut.OffsetY * 1000.0));
+	sSendBuffer := CONCAT(sSendBuffer,ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer,REAL_TO_STRING(stDataOut.OffsetZ * 1000.0));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, REAL_TO_STRING(stDataOut.ApplPara[0] * 1000.0));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, REAL_TO_STRING(stDataOut.ApplPara[1] * 1000.0));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, REAL_TO_STRING(stDataOut.ApplPara[2] * 1000.0));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, REAL_TO_STRING(stDataOut.ApplPara[3] * 1000.0));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer, REAL_TO_STRING(stDataOut.ApplPara[4] * 1000.0));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer,REAL_TO_STRING(stDataOut.ApplPara[5] * 1000.0));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer,REAL_TO_STRING(stDataOut.ApplPara[6] * 1000.0));
+	sSendBuffer := CONCAT(sSendBuffer, ARG_DELIM);
+	sSendBuffer := CONCAT(sSendBuffer,REAL_TO_STRING(stDataOut.ApplPara[7] * 1000.0));
+	sSendBuffer := CONCAT(sSendBuffer, END_OF_TEL);
+
+	bSendTelegram := TRUE;
+END_IF
+
+bExecuteSend := bEnable AND bConnected AND NOT bDisconnect AND bSendTelegram;
+
+fbSocketSend(
+	sSrvNetId:= '',
+	hSocket:= hSocket,
+	cbLen:= LEN(sSendBuffer),
+	pSrc:= ADR(sSendBuffer),
+	bExecute:=  bExecuteSend AND NOT fbSocketSend.bBusy,
+	tTimeout:= T#1S,
+	bBusy=> ,
+	bError=> ,
+	nErrId=> );
+
+IF bExecuteSend AND NOT fbSocketSend.bBusy THEN
+	bSendTelegram := FALSE;
+	bDisconnect := fbSocketSend.bError;
+END_IF
+
+bExecuteRead :=  bEnable AND bConnected AND NOT bDisconnect;
+
+fbSocketReceive(
+	sSrvNetId:= '',
+	hSocket:= hSocket,
+	cbLen:= SIZEOF(sReadBuffer) - 1,
+	pDest:= ADR(sReadBuffer),
+	bExecute:= bExecuteRead AND NOT fbSocketReceive.bBusy,
+	tTimeout:= T#1S,
+	bBusy=> , 
+	bError=> ,
+	nErrId=> ,
+	nRecBytes=> );
+
+IF bExecuteRead AND NOT fbSocketReceive.bBusy AND NOT fbSocketReceive.bError AND fbSocketReceive.nRecBytes > 0 THEN
+
+	sRecvBuffer := CONCAT(sRecvBuffer, sReadBuffer);
+	MEMSET(ADR(sReadBuffer), 0, SIZEOF(sReadBuffer));
+
+	nCrLfPos := FIND(sRecvBuffer, END_OF_TEL);
+	IF nCrLfPos > 0 THEN
+		(* Extract telegram from received data. *)
+		sRecvTelegram := LEFT(sRecvBuffer, nCrLfPos - 1);
+		sRecvBuffer := MID(sRecvBuffer, LEN(sRecvBuffer) - nCrLfPos - 1, nCrLfPos + LEN(END_OF_TEL));
+
+		(* Find the first argument delimiter in the received telegram string. *)
+		nDelimPos := FIND(sRecvTelegram, ARG_DELIM);
+
+		FOR nRecvArgNo := 1 TO NUM_OF_RECV_ARGS DO
+			IF nDelimPos > 0 THEN
+				(* Extract argument from the received telegram string. *)
+				sRecvArg := LEFT(sRecvTelegram, nDelimPos - 1);
+				sRecvTelegram := MID(sRecvTelegram, LEN(sRecvTelegram) - nDelimPos, nDelimPos + 1);
+			ELSE
+				(* Take the rest of the received telegram string as argument. *)
+				sRecvArg := sRecvTelegram;
+				sRecvTelegram := '';
+			END_IF
+			CASE nRecvArgNo OF
+				RECV_ARG_TEL_NO: nRecvTelNo := STRING_TO_UINT(sRecvArg);
+				RECV_ARG_CMD_NO: stDataIn.CmdNo := STRING_TO_UINT(sRecvArg);
+				RECV_ARG_POS_NO: stDataIn.PosNo := STRING_TO_DINT(sRecvArg);
+				RECV_ARG_CMD_STATE: stDataIn.CmdState := STRING_TO_DINT(sRecvArg);
+				RECV_ARG_POS_X: stDataIn.PosX := STRING_TO_REAL(sRecvArg) / 1000.0;
+				RECV_ARG_POS_Y: stDataIn.PosY := STRING_TO_REAL(sRecvArg) / 1000.0;
+				RECV_ARG_POS_Z: stDataIn.PosZ := STRING_TO_REAL(sRecvArg) / 1000.0;
+				RECV_ARG_APP_PARA_0: stDataIn.ApplPara[0] := STRING_TO_REAL(sRecvArg) / 1000.0;
+				RECV_ARG_APP_PARA_1: stDataIn.ApplPara[1] := STRING_TO_REAL(sRecvArg) / 1000.0;
+				RECV_ARG_APP_PARA_2: stDataIn.ApplPara[2] := STRING_TO_REAL(sRecvArg) / 1000.0;
+				RECV_ARG_APP_PARA_3: stDataIn.ApplPara[3] := STRING_TO_REAL(sRecvArg) / 1000.0;
+				RECV_ARG_APP_PARA_4: stDataIn.ApplPara[4] := STRING_TO_REAL(sRecvArg) / 1000.0;
+				RECV_ARG_APP_PARA_5: stDataIn.ApplPara[5] := STRING_TO_REAL(sRecvArg) / 1000.0;
+				RECV_ARG_APP_PARA_6: stDataIn.ApplPara[6] := STRING_TO_REAL(sRecvArg) / 1000.0;
+				RECV_ARG_APP_PARA_7: stDataIn.ApplPara[7] := STRING_TO_REAL(sRecvArg) / 1000.0;
+				RECV_ARG_ERROR_CODE: stDataIn.ErrorCode := STRING_TO_DINT(sRecvArg);
+				RECV_ARG_ERROR_MESSAGE: stDataIn.ErrorMessage := sRecvArg;
+			END_CASE
+			IF nRecvArgNo + 1 = RECV_ARG_ERROR_MESSAGE THEN
+				nDelimPos := 0;
+			ELSE
+				(* Find next argument delimiter. *)
+				nDelimPos := FIND(sRecvTelegram, ARG_DELIM);
+			END_IF
+		END_FOR
+		nNumOfTelPerSecond := nNumOfTelPerSecond + 1;
+	END_IF
+
+ELSIF bExecuteRead AND NOT fbSocketReceive.bBusy AND fbSocketReceive.bError THEN
+	bDisconnect := TRUE;
+END_IF
+
+fbCycleTimeMeasurementTon(PT := T#1S, IN := bEnable AND bConnected AND NOT fbCycleTimeMeasurementTon.Q);
+IF fbCycleTimeMeasurementTon.Q THEN
+	IF nNumOfTelPerSecond > 0 THEN
+		nCycleTime := 1000 / nNumOfTelPerSecond;
+		nNumOfTelPerSecond := 0;
+	ELSE
+		nCycleTime := 0;
+	END_IF
+END_IF]]>
+		</body>
+	</st>
+</pou>
