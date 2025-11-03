@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<task-list>
+	<task>
+		<name>Standard</name>
+		<priority>0</priority>
+		<interval>10</interval>
+		<single><![CDATA[]]></single>
+		<external>-1</external>
+		<time-in-microseconds>false</time-in-microseconds>
+		<enable-watchdog>false</enable-watchdog>
+		<watchdog-time>4294967295</watchdog-time>
+		<watchdog-sensitivity>1</watchdog-sensitivity>
+		<watchdog-time-in-microseconds>false</watchdog-time-in-microseconds>
+		<program-list>
+			<program>MAIN</program>
+		</program-list>
+	</task>
+	<debug-task>-1</debug-task>
+</task-list>
