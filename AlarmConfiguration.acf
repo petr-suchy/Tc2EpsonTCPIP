@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<alarmconfig>
+	<alarmconfig-dateformat>dd'-'MM'-'yyyy</alarmconfig-dateformat>
+	<alarmconfig-timeformat>HH':'mm':'ss</alarmconfig-timeformat>
+	<alarmconfig-next-text-id>10002</alarmconfig-next-text-id>
+	<alarmconfig-replacemsg-placeholders>false</alarmconfig-replacemsg-placeholders>
+	<alarmconfig-storealarmid>false</alarmconfig-storealarmid>
+	<alarmconfig-usealarmidfordynamictext>true</alarmconfig-usealarmidfordynamictext>
+	<alarmconfig-generatealarmaccessinterface>false</alarmconfig-generatealarmaccessinterface>
+	<alarmclass-list>
+		<alarmclass>
+			<alarmclass-name>DEFAULT</alarmclass-name>
+			<alarmclass-description><![CDATA[]]></alarmclass-description>
+			<alarmclass-id>0</alarmclass-id>
+			<alarmclass-acktype>0</alarmclass-acktype>
+			<alarmclass-textcolor-into>255,0,0</alarmclass-textcolor-into>
+			<alarmclass-textcolor-ack>0,204,51</alarmclass-textcolor-ack>
+			<alarmclass-textcolor-outof>0,0,255</alarmclass-textcolor-outof>
+			<alarmclass-textcolor-reset>255,128,0</alarmclass-textcolor-reset>
+			<alarmclass-bgcolor-into>255,255,255</alarmclass-bgcolor-into>
+			<alarmclass-bgcolor-ack>255,255,255</alarmclass-bgcolor-ack>
+			<alarmclass-bgcolor-outof>255,255,255</alarmclass-bgcolor-outof>
+			<alarmclass-bgcolor-reset>255,255,255</alarmclass-bgcolor-reset>
+			<alarmaction-list/>
+		</alarmclass>
+	</alarmclass-list>
+	<alarmgroup-list name="System"/>
+	<visualsettings>
+		<has-dynamic-texts>false</has-dynamic-texts>
+		<hide-elements>false</hide-elements>
+		<has-language>false</has-language>
+		<log-inputs>false</log-inputs>
+		<language-file><![CDATA[]]></language-file>
+		<language><![CDATA[]]></language>
+		<log-file><![CDATA[]]></log-file>
+		<dynamic-files/>
+		<use-time-formats>false</use-time-formats>
+		<time-format>HH':'mm':'ss</time-format>
+		<date-format>dd'-'MM'-'yyyy</date-format>
+		<dt-format><![CDATA[dd'-'MM'-'yyyy HH':'mm':'ss]]></dt-format>
+		<best-fit>false</best-fit>
+		<best-fit-set>true</best-fit-set>
+	</visualsettings>
+	<alarmconfig-globaldatabase>
+		<database type="filesystem">
+			<database-id>0</database-id>
+			<name><![CDATA[]]></name>
+			<file><![CDATA[]]></file>
+			<path><![CDATA[]]></path>
+			<file-change-type>0</file-change-type>
+			<file-delete-hours>0</file-delete-hours>
+			<extension>0</extension>
+			<file-change-var><![CDATA[]]></file-change-var>
+		</database>
+	</alarmconfig-globaldatabase>
+</alarmconfig>
