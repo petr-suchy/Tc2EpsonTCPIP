@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<trace-definition>
+	<rising>1</rising>
+	<scan-time>-1</scan-time>
+	<after-event>50</after-event>
+	<number-of-scans>2048</number-of-scans>
+	<trigger-level>0.000000</trigger-level>
+	<show-variable-list>
+		<show-variable><![CDATA[]]></show-variable>
+		<show-variable><![CDATA[]]></show-variable>
+		<show-variable><![CDATA[]]></show-variable>
+		<show-variable><![CDATA[]]></show-variable>
+		<show-variable><![CDATA[]]></show-variable>
+		<show-variable><![CDATA[]]></show-variable>
+		<show-variable><![CDATA[]]></show-variable>
+		<show-variable><![CDATA[]]></show-variable>
+	</show-variable-list>
+	<variable-list/>
+</trace-definition>
