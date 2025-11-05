@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<dut>
+	<path>\/zLibrary\/EpsonTCPIP</path>
+	<name>eEpsonTCPIPCommandState</name>
+	<flags>2048</flags>
+	<interface>
+		<![CDATA[TYPE eEpsonTCPIPCommandState :
+(
+	EPSON_TCPIP_CMD_STATE_UNDEF := 0,
+	EPSON_TCPIP_CMD_STATE_BUSY := 1,
+	EPSON_TCPIP_CMD_STATE_DONE := 2,
+	EPSON_TCPIP_CMD_STATE_ERROR := 3
+);
+END_TYPE]]>
+	</interface>
+</dut>
