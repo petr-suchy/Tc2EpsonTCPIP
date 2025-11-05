@@ -13,6 +13,7 @@ VAR
 	sRemoteHost : STRING(15) := '192.168.100.2';
 	(* Remote TCP port of the robot controller. *)
 	nRemotePort : UDINT := 2000;
+
 	(* Output data from PLC that is sent to the robot controller *)
 	stDataOut : sEpsonTCPIPSendData;
 	(* Input data for PLC that is received from the robot controller. *)
@@ -22,6 +23,16 @@ VAR
 	bConnected : BOOL;
 	bAlive : BOOL;
 	nCycleTime : UINT;
+
+	fbEpsonTCPIPMove : FB_EpsonTCPIPMove;
+
+	bExecuteMove : BOOL;
+	bMoveDone : BOOL;
+	bMoveBusy : BOOL;
+	bMoveError : BOOL;
+
+	nTargetPosition : DINT;
+	nActualPosition : DINT;
 END_VAR
 ]]>
 	</interface>
@@ -35,7 +46,19 @@ END_VAR
 	bConnected=> bConnected,
 	bAlive=> bAlive,
 	nCycleTime=> nCycleTime,
-	stDataIn=> stDataIn);]]>
+	stDataIn=> stDataIn);
+
+fbEpsonTCPIPMove(
+	bExecute:= bExecuteMove,
+	nTargetPosition:= nTargetPosition,
+	stDataOut:= stDataOut,
+	stDataIn:= stDataIn,
+	bDone=> bMoveDone,
+	bBusy=> bMoveBusy,
+	bError=> bMoveError,
+	nActualPosition=> nActualPosition);
+
+fbEpsonTCPIPConnection();]]>
 		</body>
 	</st>
 </pou>
