@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<pou>
+	<path>\/zLibrary\/EpsonTCPIP</path>
+	<name>FB_EpsonTCPIPMove</name>
+	<flags>2048</flags>
+	<interface>
+		<![CDATA[FUNCTION_BLOCK FB_EpsonTCPIPMove
+VAR_INPUT
+	bExecute : BOOL;
+	nTargetPosition : DINT;
+END_VAR
+VAR_OUTPUT
+	bDone : BOOL;
+	bBusy : BOOL;
+	bError : BOOL;
+	nActualPosition : DINT;
+END_VAR
+VAR_IN_OUT
+	(* Output data from PLC that is sent to the robot controller *)
+	stDataOut : sEpsonTCPIPSendData;
+	(* Input data for PLC that is received from the robot controller. *)
+	stDataIn : sEpsonTCPIPRecvData;
+END_VAR
+VAR
+	nState : INT := S_WAIT_EXEC_RAISE;
+END_VAR
+VAR CONSTANT
+	S_WAIT_EXEC_RAISE : INT := 0;
+	S_WAIT_MOVE_READY : INT := 1;
+	S_WAIT_MOVE_DONE : INT := 2;
+	S_WAIT_EXEC_FALL : INT := 3;
+END_VAR]]>
+	</interface>
+	<st>
+		<body>
+			<![CDATA[
+CASE nState OF
+S_WAIT_EXEC_RAISE:
+	IF bExecute THEN
+		IF stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_UNDEF THEN
+			stDataOut.PosNo := 0;
+			stDataOut.CmdNo := 1;
+		END_IF
+		bBusy := TRUE;
+		nState := S_WAIT_MOVE_READY;
+	END_IF
+S_WAIT_MOVE_READY:
+	IF stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_DONE AND nTargetPosition > 0 THEN
+		(* Start robot movement. *)
+		stDataOut.PosNo := nTargetPosition;
+		stDataOut.CmdNo := (stDataIn.CmdNo MOD 65535) + 1;
+		nState := S_WAIT_MOVE_DONE;
+	ELSIF stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_ERROR OR nTargetPosition <= 0 THEN
+		bBusy := FALSE;
+		bError := TRUE;
+		nState := S_WAIT_EXEC_FALL;
+	END_IF
+S_WAIT_MOVE_DONE:
+	IF stDataOut.CmdNo = stDataIn.CmdNo AND stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_DONE AND
+		stDataIn.PosNo = nTargetPosition
+	THEN
+		bDone := TRUE;
+		bBusy := FALSE;
+		nActualPosition := nTargetPosition;
+		nState := S_WAIT_EXEC_FALL;
+	ELSIF stDataOut.CmdNo = stDataIn.CmdNo AND stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_ERROR THEN
+		bBusy := FALSE;
+		bError := TRUE;
+		nState := S_WAIT_EXEC_FALL;
+	END_IF
+S_WAIT_EXEC_FALL:
+	IF NOT bExecute THEN
+		bDone := FALSE;
+		bBusy := FALSE;
+		bError := FALSE;
+		nActualPosition := 0;
+		nState := S_WAIT_EXEC_RAISE;
+	END_IF
+END_CASE
+]]>
+		</body>
+	</st>
+</pou>
