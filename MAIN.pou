@@ -54,6 +54,7 @@ fbEpsonTCPIPMove(
 	bExecute:= bExecuteMove,
 	nTargetPosition:= nTargetPosition,
 	bTaskRunning := bTaskRunning,
+	tTimeout := T#5S,
 	stDataOut:= stDataOut,
 	stDataIn:= stDataIn,
 	bDone=> bMoveDone,
