@@ -24,6 +24,7 @@ VAR_IN_OUT
 END_VAR
 VAR
 	nState : INT := S_WAIT_EXEC_RAISE;
+	fbExecRTrig : R_TRIG;
 END_VAR
 VAR CONSTANT
 	S_WAIT_EXEC_RAISE : INT := 0;
@@ -34,10 +35,11 @@ END_VAR]]>
 	</interface>
 	<st>
 		<body>
-			<![CDATA[
+			<![CDATA[fbExecRTrig(CLK := bExecute);
+
 CASE nState OF
 S_WAIT_EXEC_RAISE:
-	IF bExecute THEN
+	IF fbExecRTrig.Q THEN
 		IF stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_UNDEF THEN
 			stDataOut.PosNo := 0;
 			stDataOut.CmdNo := 1;
