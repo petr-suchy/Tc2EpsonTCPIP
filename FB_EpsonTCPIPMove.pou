@@ -10,6 +10,7 @@ VAR_INPUT
 	bExecute : BOOL;
 	nTargetPosition : DINT;
 	bTaskRunning : BOOL;
+	tTimeout : TIME;
 END_VAR
 VAR_OUTPUT
 	bDone : BOOL;
@@ -26,6 +27,7 @@ END_VAR
 VAR
 	nState : INT := S_WAIT_EXEC_RAISE;
 	fbExecRTrig : R_TRIG;
+	fbTimeoutTon : TON;
 END_VAR
 VAR CONSTANT
 	S_WAIT_EXEC_RAISE : INT := 0;
@@ -37,6 +39,7 @@ END_VAR]]>
 	<st>
 		<body>
 			<![CDATA[fbExecRTrig(CLK := bExecute);
+fbTimeoutTon(IN := bBusy, PT := tTimeout);
 
 CASE nState OF
 S_WAIT_EXEC_RAISE:
@@ -49,25 +52,31 @@ S_WAIT_EXEC_RAISE:
 		nState := S_WAIT_MOVE_READY;
 	END_IF
 S_WAIT_MOVE_READY:
-	IF stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_DONE AND nTargetPosition > 0 AND bTaskRunning THEN
+	IF stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_DONE AND nTargetPosition > 0 AND
+		bTaskRunning
+	THEN
 		(* Start robot movement. *)
 		stDataOut.PosNo := nTargetPosition;
 		stDataOut.CmdNo := (stDataIn.CmdNo MOD 65535) + 1;
 		nState := S_WAIT_MOVE_DONE;
-	ELSIF stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_ERROR OR nTargetPosition <= 0 OR NOT bTaskRunning THEN
+	ELSIF stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_ERROR OR nTargetPosition <= 0 OR
+		NOT bTaskRunning OR fbTimeoutTon.Q
+	THEN
 		bBusy := FALSE;
 		bError := TRUE;
 		nState := S_WAIT_EXEC_FALL;
 	END_IF
 S_WAIT_MOVE_DONE:
-	IF (stDataOut.CmdNo = stDataIn.CmdNo AND stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_DONE) AND bTaskRunning AND
-		stDataIn.PosNo = nTargetPosition
+	IF (stDataOut.CmdNo = stDataIn.CmdNo AND stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_DONE) AND
+		 stDataIn.PosNo = nTargetPosition
 	THEN
 		bDone := TRUE;
 		bBusy := FALSE;
 		nActualPosition := nTargetPosition;
 		nState := S_WAIT_EXEC_FALL;
-	ELSIF (stDataOut.CmdNo = stDataIn.CmdNo AND stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_ERROR) OR NOT bTaskRunning THEN
+	ELSIF (stDataOut.CmdNo = stDataIn.CmdNo AND stDataIn.CmdState = EPSON_TCPIP_CMD_STATE_ERROR) OR
+		NOT bTaskRunning OR fbTimeoutTon.Q
+	THEN
 		bBusy := FALSE;
 		bError := TRUE;
 		nState := S_WAIT_EXEC_FALL;
