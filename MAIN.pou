@@ -26,6 +26,8 @@ VAR
 
 	fbEpsonTCPIPMove : FB_EpsonTCPIPMove;
 
+	bTaskRunning : BOOL;
+
 	bExecuteMove : BOOL;
 	bMoveDone : BOOL;
 	bMoveBusy : BOOL;
@@ -51,6 +53,7 @@ END_VAR
 fbEpsonTCPIPMove(
 	bExecute:= bExecuteMove,
 	nTargetPosition:= nTargetPosition,
+	bTaskRunning := bTaskRunning,
 	stDataOut:= stDataOut,
 	stDataIn:= stDataIn,
 	bDone=> bMoveDone,
